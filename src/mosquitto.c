@@ -436,6 +436,18 @@ static int pid__write(void)
 	return MOSQ_ERR_SUCCESS;
 }
 
+static void s6_notify()
+{
+	int fd = -1;
+	const char *notify_str = getenv("NOTIFICATION_FD");
+
+	if (notify_str)
+		fd = notify_str[0] - '0';
+	if (fd > 0 && fd < 10) {
+		write(fd, "\n", 1);
+		close(fd);
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -558,7 +570,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_SYSTEMD
 	sd_notify(0, "READY=1");
 #endif
-
+	s6_notify();
 	run = 1;
 	rc = mosquitto_main_loop(listensock, listensock_count);
 
