@@ -10,6 +10,7 @@ fdswap 3 0
 
 export LISTEN_FDS 3
 getpid LISTEN_PID
+export NOTIFICATION_FD 7
 
 s6-setuidgid mosquitto
 
