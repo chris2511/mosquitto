@@ -687,7 +687,7 @@ void mosq_websockets_init(struct mosquitto__listener *listener, const struct mos
 
 	memset(&info, 0, sizeof(info));
 	info.iface = listener->host;
-	info.port = listener->port;
+	info.port = CONTEXT_PORT_NO_LISTEN_SERVER;
 	info.protocols = p;
 	info.gid = -1;
 	info.uid = -1;
@@ -738,7 +738,7 @@ void mosq_websockets_init(struct mosquitto__listener *listener, const struct mos
 
 	lws_set_log_level(conf->websockets_log_level, log_wrap);
 
-	log__printf(NULL, MOSQ_LOG_INFO, "Opening websockets listen socket on port %d.", listener->port);
+	log__printf(NULL, MOSQ_LOG_INFO, "Initializing websockets context");
 	listener->ws_in_init = true;
 	listener->ws_context = lws_create_context(&info);
 	listener->ws_in_init = false;

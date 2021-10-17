@@ -347,23 +347,22 @@ static int listeners__start(void)
 	}
 
 	for(i=0; i<db.config->listener_count; i++){
-		if(db.config->listeners[i].protocol == mp_mqtt){
-			if(listeners__start_single_mqtt(&db.config->listeners[i])){
-				db__close();
-				if(db.config->pid_file){
-					(void)remove(db.config->pid_file);
-				}
-				return 1;
+		if(listeners__start_single_mqtt(&db.config->listeners[i])){
+			db__close();
+			if(db.config->pid_file){
+				(void)remove(db.config->pid_file);
 			}
-		}else if(db.config->listeners[i].protocol == mp_websockets){
+			return 1;
+		}
 #ifdef WITH_WEBSOCKETS
+		if(db.config->listeners[i].protocol == mp_websockets){
 			mosq_websockets_init(&db.config->listeners[i], db.config);
 			if(!db.config->listeners[i].ws_context){
 				log__printf(NULL, MOSQ_LOG_ERR, "Error: Unable to create websockets listener on port %d.", db.config->listeners[i].port);
 				return 1;
 			}
-#endif
 		}
+#endif
 	}
 	if(listensock == NULL){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Unable to start any listening sockets, exiting.");
