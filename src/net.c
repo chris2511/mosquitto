@@ -58,6 +58,9 @@ Contributors:
 #include "net_mosq.h"
 #include "util_mosq.h"
 
+#ifdef WITH_WEBSOCKETS
+#  include <libwebsockets.h>
+#endif
 #ifdef WITH_TLS
 #include "tls_mosq.h"
 #include <openssl/err.h>
@@ -148,6 +151,12 @@ struct mosquitto *net__socket_accept(struct mosquitto__listener_sock *listensock
 		}
 		return NULL;
 	}
+#if WITH_WEBSOCKETS
+	if(listensock->listener->ws_context){
+		lws_adopt_socket(listensock->listener->ws_context, new_sock);
+		return NULL;
+	}
+#endif
 
 	G_SOCKET_CONNECTIONS_INC();
 
@@ -710,13 +719,12 @@ static int net__socket_listen_tcp(struct mosquitto__listener *listener)
 	listener->socks = NULL;
 
 	for(rp = ainfo; rp; rp = rp->ai_next){
-		if(rp->ai_family == AF_INET){
-			log__printf(NULL, MOSQ_LOG_INFO, "Opening ipv4 listen socket on port %d.", ntohs(((struct sockaddr_in *)rp->ai_addr)->sin_port));
-		}else if(rp->ai_family == AF_INET6){
-			log__printf(NULL, MOSQ_LOG_INFO, "Opening ipv6 listen socket on port %d.", ntohs(((struct sockaddr_in6 *)rp->ai_addr)->sin6_port));
-		}else{
+		const char *sname = listener->protocol == mp_websockets ?
+						"web" : "";
+		int proto = rp->ai_family == AF_INET ? 4 : 6;
+		if(rp->ai_family != AF_INET && rp->ai_family != AF_INET6)
 			continue;
-		}
+		log__printf(NULL, MOSQ_LOG_INFO, "Opening ipv%d listen %ssocket on port %d.", proto, sname, ntohs(((struct sockaddr_in6 *)rp->ai_addr)->sin6_port));
 
 		sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 		if(sock == INVALID_SOCKET){
@@ -912,7 +920,9 @@ static int set_svc_mgr_fd(struct mosquitto__listener *listener, int sock)
 	listener->socks[listener->sock_count-1] = sock;
 	if (listener->port)
 		log__printf(NULL, MOSQ_LOG_NOTICE,
-			"IP socket for %s:%u provided by service manager",
+			"%s for %s:%u provided by service manager",
+			listener->protocol == mp_websockets ?
+				 "WebSocket" : "IP socket",
 			listener->host, listener->port);
 #ifdef WITH_UNIX_SOCKETS
 	else
